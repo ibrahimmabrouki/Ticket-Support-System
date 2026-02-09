@@ -5,7 +5,7 @@ import User from "../models/user.model";
 export const createTicket = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const { client, assignedTo, ...rest } = req.body;
@@ -45,6 +45,41 @@ export const createTicket = async (
     });
 
     res.status(201).json({ message: "Ticket added successfully", ticket });
+  } catch (error) {
+    next(error);
+  }
+};
+export const updateTicket = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { status, priority, assignedTo } = req.body;
+
+    const updateData: Partial<{ status: string; priority: string; assignedTo: string }> = {};
+
+    if (status) updateData.status = status;
+    if (priority) updateData.priority = priority;
+
+    if (assignedTo) {//here we are checking if the assigneded user is empolyee or not if not then we will return error
+      const employee = await User.findOne({ username: assignedTo, role: "employee" });
+      if (!employee) {
+        return res.status(404).json({ error: `Employee '${assignedTo}' not found` });
+      }
+      updateData.assignedTo = employee._id.toString();
+    }
+
+    const ticket = await Ticket.findByIdAndUpdate(req.params.id, updateData, { new: true });
+
+    if (!ticket) {
+      return res.status(404).json({ error: "Ticket not found" });
+    }
+
+    res.status(200).json({
+      message: "Ticket updated successfully",
+      ticket,
+    });
   } catch (error) {
     next(error);
   }
