@@ -49,3 +49,118 @@ export const createTicket = async (
     next(error);
   }
 };
+
+
+export const getTicketsByStatus = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const statusRequired = req.query.status as string;
+
+        const ticketsByStatus = await Ticket.find({ status: statusRequired });
+
+        if (ticketsByStatus.length === 0) {
+            return res.status(404).json({ message: `No tickets with status '${statusRequired}' found` });
+        }
+
+        res.status(200).json(ticketsByStatus);
+
+    } catch (error) {
+        next(error);
+    }
+};
+
+
+export const getTicketsByPriority = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const priorityRequired = req.params.priority as string;
+
+        const ticketsByPriority = await Ticket.find({ priority: priorityRequired });
+
+        if (ticketsByPriority.length === 0) {
+            return res.status(404).json({ message: `No tickets with Priority '${priorityRequired}' found` });
+        }
+
+        res.status(200).json(ticketsByPriority);
+
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getTicketByClientId = async (
+    req: Request, 
+    res: Response, 
+    next: NextFunction
+) => {
+    try{
+
+        const clientId = req.params.id as string;
+        const clientExists = await User.findOne({_id: clientId});
+
+        if (!clientExists) {
+            return res
+              .status(404)
+              .json({ error: `Client with ID '${clientId}' not found` });
+        }
+
+        const ticketsById = await Ticket.find({client: clientId});
+
+        if (ticketsById.length === 0) {
+            return res.status(404).json({ message: `No tickets for this ID: '${clientId}' found` });
+        }
+
+        res.status(200).json(ticketsById);
+
+    } catch (error){
+        next(error);
+    }
+}
+
+export const getTicketByEmployeeId = async (
+    req: Request, 
+    res: Response, 
+    next: NextFunction
+) => {
+    try{
+
+        const employeeId = req.params.id as string;
+        const employeeExists = await User.findOne({_id: employeeId, role: "employee"});
+
+        if (!employeeExists) {
+            return res
+              .status(404)
+              .json({ error: `Employee with ID '${employeeId}' not found` });
+        }
+
+        const ticketsById = await Ticket.find({assignedTo: employeeId});
+
+        if (ticketsById.length === 0) {
+            return res.status(404).json({ message: `No tickets for this ID: '${employeeId}' found` });
+        }
+
+        res.status(200).json(ticketsById);
+
+    } catch (error){
+        next(error);
+    }
+}
+
+
+// export getTicketsByStatus = async (
+//     req: Request,
+//     res: Response,
+//     next: NextFunction 
+//     ) => {
+//         try{
+
+//         }catch(error){
+//             next(error)
+//         }
+// };
