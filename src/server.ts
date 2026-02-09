@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import User from "./models/user.model";
+
 dotenv.config();
 
 import app from "./app";
