@@ -1,3 +1,4 @@
+import { truncate } from "fs";
 import { Schema, model, Document } from "mongoose";
 
 export interface IUser extends Document {
@@ -5,19 +6,19 @@ export interface IUser extends Document {
   email: string;
   password: string;
   phone: string;
+  username:string;
+  role: string;
+  
 }
 
 const userSchema = new Schema<IUser>(
   {
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true },
-    password: {
-      type: String,
-      required: true,
-      lowercase: true,
-      minlength: 6,
-    },
+    password: { type: String, required: true, lowercase: true, minlength: 6 },
     phone: { type: String, required: true },
+    username: { type: String, required: true, unique: true },
+    role: { type: String, enum: ["employee", "client"], default: "employee", required: true },
   },
   { timestamps: true }
 );
