@@ -1,15 +1,6 @@
 import { Schema, model, Document } from "mongoose";
 
-
-
-
-
-
-
-
-
 export interface ITicket extends Document {
-  TicketID: string;
   priority: string;
   status: string;
   address: string;
@@ -20,13 +11,13 @@ export interface ITicket extends Document {
 
 const ticketSchema = new Schema<ITicket>(
     {
-        TicketID: { type: String, unique: true },
-        priority: {type: String, required: true, trim: true, lowercase: true },
-        status: { type: String, required: true, trim: true, lowercase: true, default: "open" },
+        priority: { type: String, enum: ["low", "medium", "high"], lowercase: true, trim: true, default: "low" },
+        status: { type: String, enum: ["open", "in progress", "pending", "closed"], lowercase: true, trim: true, default: "open" },
         address: { type: String, required: true, trim: true},
         assignedTo: { type: String, trim: true, default: ""},
         client: { type: String, required: true,  trim: true},
-        description: { type: String, trim: true, minlength: 10,}, },
+        description: { type: String, trim: true, minlength: 10,}, 
+    },
     { timestamps: true }
 
 );
