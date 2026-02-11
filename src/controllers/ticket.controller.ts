@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import Ticket from "../models/ticket.model";
 import User from "../models/user.model";
+import {hash, compare} from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 export const createTicket = async (
   req: Request,

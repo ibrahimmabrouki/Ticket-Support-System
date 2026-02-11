@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import User from "../models/user.model";
+import {hash, compare} from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 export const createUser = async (
   req: Request,
