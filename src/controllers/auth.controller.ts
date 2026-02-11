@@ -3,7 +3,23 @@ import Ticket from "../models/ticket.model";
 import User from "../models/user.model";
 import { hash, compare } from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { ACCESS_TOKEN_SECRET, TOKEN_EXPIRE } from "../config/jwt";
+import {
+  ACCESS_TOKEN_SECRET,
+  TOKEN_EXPIRE,
+  REFRESH_TOKEN_SECRET,
+} from "../config/jwt";
+import { authenticateToken } from "../middlewares/auth.middleware.js";
+
+interface JwtUserPayload {
+  id: string;
+  username: string;
+  role: string;
+}
+
+//now we can user req.user
+interface AuthRequest extends Request {
+  user?: JwtUserPayload;
+}
 
 export const register = async (
   req: Request,
@@ -21,7 +37,8 @@ export const register = async (
         .json({ error: `Client with username '${username}' already exists` });
     }
 
-    const hashedPassword = await hash(password.trim(), 10);
+    //commanded temporarly
+    /* const hashedPassword = await hash(password.trim(), 10);
 
     const clientUser = await User.create({
       name,
@@ -30,8 +47,16 @@ export const register = async (
       phone,
       username,
       role,
-    });
+    });*/
 
+    const clientUser = await User.create({
+      name,
+      email,
+      password,
+      phone,
+      username,
+      role,
+    });
 
     res.status(201).json(clientUser);
   } catch (err) {
@@ -46,21 +71,86 @@ export const login = async (
 ) => {
   try {
     const { username, password } = req.body;
-    const user = await User.findOne({ username });
-    if (!user) return res.status(404).json({ error: "User not found" });
+    const userExists = await User.findOne({ username });
+    if (!userExists) return res.status(404).json({ error: "User not found" });
 
-    const passValid = await compare(password.trim(), user.password);
-    console.log(`usedb pass ${user.password}`);
-    console.log(passValid);
+    // commanded temporarly
+    // const passValid = await compare(password.trim(), user.password);
+    // if (!passValid) return res.status(401).json({ error: "Invalid password" });
+
+    //const payload = { id: user._id, username: user.username, role: user.role };
+    // const options: jwt.SignOptions = { expiresIn: TOKEN_EXPIRE as any};
+    // const token = jwt.sign(payload, ACCESS_TOKEN_SECRET, options);
+
+    if (userExists.password.trim() !== password) {
+      return res.status(401).json({ error: "Invalid password" });
+    }
+    const payload: JwtUserPayload = {
+      id: userExists._id.toString(),
+      username: userExists.username,
+      role: userExists.role,
+    };
+
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = jwt.sign(payload, REFRESH_TOKEN_SECRET);
+    await User.findByIdAndUpdate(
+      userExists._id,
+      { refreshToken },
+      { new: true }
+    );
     
-    if (!passValid) return res.status(401).json({ error: "Invalid password" });
-
-    const payload = { id: user._id, username: user.username, role: user.role };
-    const options: jwt.SignOptions = { expiresIn: TOKEN_EXPIRE as any};
-    const token = jwt.sign(payload, ACCESS_TOKEN_SECRET, options);
-
-    return res.status(200).json({ message: "Login successful", token });
+    return res.status(200).json({
+      message: "Login successful",
+      accessToken,
+      refreshToken,
+    });
   } catch (error) {
     next(error);
   }
 };
+
+
+export const refreshAccessToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { token: refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(401).json({ message: "Refresh token required" });
+    }
+
+    const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET) as JwtUserPayload;
+
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.refreshToken !== refreshToken) {
+      return res.status(403).json({ message: "Invalid refresh token" });
+    }
+
+    const newAccessToken = jwt.sign(
+      { id: user._id.toString(), username: user.username, role: user.role },
+      ACCESS_TOKEN_SECRET,
+      { expiresIn: TOKEN_EXPIRE as any }
+    );
+
+    return res.status(200).json({ accessToken: newAccessToken });
+
+  } catch (err) {
+    if (err) {
+      return res.status(403).json({ message: "Invalid token" });
+    }
+    next(err);
+  }
+};
+function generateAccessToken(payload: JwtUserPayload) {
+  return jwt.sign(payload, ACCESS_TOKEN_SECRET, {
+    expiresIn: TOKEN_EXPIRE as any,
+  });
+}
