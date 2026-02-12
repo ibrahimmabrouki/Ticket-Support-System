@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import Ticket from "../models/ticket.model";
 import User from "../models/user.model";
-import { hash, compare } from "bcryptjs";
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import {
   ACCESS_TOKEN_SECRET,
@@ -38,25 +38,18 @@ export const register = async (
     }
 
     //commanded temporarly
-    /* const hashedPassword = await hash(password.trim(), 10);
+    const hashedPassword = await bcrypt.hash(password.trim(), 10);
 
     const clientUser = await User.create({
       name,
       email,
-      password: hashedPassword.trim(),
-      phone,
-      username,
-      role,
-    });*/
-
-    const clientUser = await User.create({
-      name,
-      email,
-      password,
+      password: hashedPassword,
       phone,
       username,
       role,
     });
+
+   
 
     res.status(201).json(clientUser);
   } catch (err) {
@@ -75,16 +68,16 @@ export const login = async (
     if (!userExists) return res.status(404).json({ error: "User not found" });
 
     // commanded temporarly
-    // const passValid = await compare(password.trim(), user.password);
-    // if (!passValid) return res.status(401).json({ error: "Invalid password" });
+     const passValid = await bcrypt.compare(password.trim(), userExists.password);
+     if (!passValid) return res.status(401).json({ error: "Invalid password" });
 
     //const payload = { id: user._id, username: user.username, role: user.role };
     // const options: jwt.SignOptions = { expiresIn: TOKEN_EXPIRE as any};
     // const token = jwt.sign(payload, ACCESS_TOKEN_SECRET, options);
 
-    if (userExists.password.trim() !== password) {
-      return res.status(401).json({ error: "Invalid password" });
-    }
+    // if (userExists.password.trim() !== password) {
+    //   return res.status(401).json({ error: "Invalid password" });
+    // }
     const payload: JwtUserPayload = {
       id: userExists._id.toString(),
       username: userExists.username,
