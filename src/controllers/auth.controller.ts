@@ -91,6 +91,7 @@ export const login = async (
       role: userExists.role,
     };
 
+    //here we need to send it back to the client
     const accessToken = generateAccessToken(payload);
     const refreshToken = jwt.sign(payload, REFRESH_TOKEN_SECRET);
     await User.findByIdAndUpdate(
@@ -116,7 +117,7 @@ export const refreshAccessToken = async (
   next: NextFunction
 ) => {
   try {
-    const { token: refreshToken } = req.body;
+    const refreshToken = req.body.token;
 
     if (!refreshToken) {
       return res.status(401).json({ message: "Refresh token required" });
@@ -134,11 +135,14 @@ export const refreshAccessToken = async (
       return res.status(403).json({ message: "Invalid refresh token" });
     }
 
-    const newAccessToken = jwt.sign(
-      { id: user._id.toString(), username: user.username, role: user.role },
-      ACCESS_TOKEN_SECRET,
-      { expiresIn: TOKEN_EXPIRE as any }
-    );
+    const payload: JwtUserPayload = {
+      id: user._id.toString(),
+      username: user.username,
+      role: user.role,
+    };
+
+    //we also need to send it back to the client
+    const newAccessToken = generateAccessToken(payload);
 
     return res.status(200).json({ accessToken: newAccessToken });
 
@@ -149,6 +153,39 @@ export const refreshAccessToken = async (
     next(err);
   }
 };
+
+export const logout = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try{
+     //here the client will send the refreshToken and based on that we will find the user
+     //then we delete this refresh token form their objects in DB
+     
+     const refreshToken = req.body.token;
+     if(!refreshAccessToken){
+      res.status(403).send({msg: "You dont have refresh key"});
+     }
+
+     const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET) as JwtUserPayload;
+     const user = await User.findById(decoded.id);
+
+     if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.refreshToken?.trim() !== refreshToken.trim()) {
+      return res.status(403).json({ message: "Invalid refresh token" });
+    }
+
+    await User.findByIdAndUpdate(user._id, {refreshToken: null}, {new: true})
+    return res.status(200).send("You logged out");
+
+  } catch(err){
+    next(err);
+  }
+}
 function generateAccessToken(payload: JwtUserPayload) {
   return jwt.sign(payload, ACCESS_TOKEN_SECRET, {
     expiresIn: TOKEN_EXPIRE as any,
